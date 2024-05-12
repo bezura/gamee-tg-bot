@@ -13,7 +13,7 @@ class GameModel(Base):
     id: Mapped[int_pk]
     title: Mapped[str]
     description: Mapped[str]
-    thumbnail_url: Mapped[int | None]
+    thumbnail_url: Mapped[str | None]
     is_active: Mapped[bool] = mapped_column(server_default="0")
     # game_type: Mapped[GameType] = mapped_column(Enum(GameType, name="game_type", nullable=False))
 
