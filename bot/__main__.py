@@ -7,7 +7,6 @@ import uvloop
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 
-from bot.api.__main__ import start_unicorn
 from bot.core.config import settings
 from bot.core.loader import app, bot, dp
 from bot.handlers import get_handlers_router
