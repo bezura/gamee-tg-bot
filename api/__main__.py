@@ -232,6 +232,7 @@ def check_winner(board: List[List[str]]) -> str:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=443,
+    uvicorn.run(app, host="192.168.5.253", port=443,
                 ssl_keyfile="./localhost+2-key.pem",
                 ssl_certfile="./localhost+2.pem")
+    #на проде можно вручную впечатьать, todo вынести в env
