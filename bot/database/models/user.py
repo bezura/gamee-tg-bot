@@ -14,6 +14,7 @@ class UserModel(Base):
     last_name: Mapped[str | None]
     username: Mapped[str | None]
     language_code: Mapped[str | None]
+    avatar_url: Mapped[str | None]
     referrer: Mapped[str | None]
     created_at: Mapped[created_at]
 

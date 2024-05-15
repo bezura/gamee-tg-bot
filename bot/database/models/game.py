@@ -5,7 +5,6 @@ from sqlalchemy import Enum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.database.models.base import Base, created_at, int_pk
-from bot.enums.game_types import GameType
 
 
 class GameModel(Base):
@@ -14,8 +13,13 @@ class GameModel(Base):
     title: Mapped[str]
     description: Mapped[str]
     thumbnail_url: Mapped[str | None]
+
     is_active: Mapped[bool] = mapped_column(server_default="0")
-    # game_type: Mapped[GameType] = mapped_column(Enum(GameType, name="game_type", nullable=False))
+
+    websocket_uri: Mapped[str | None]
+    front_uri: Mapped[str | None]
+
+    max_players: Mapped[int] = mapped_column(server_default="2")
 
 
 class UserGameModel(Base):

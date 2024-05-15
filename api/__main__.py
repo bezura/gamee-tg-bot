@@ -1,10 +1,12 @@
 import datetime
 import json
-from typing import List, Dict
+import random
+import secrets
+from typing import List, Dict, Annotated
 
 import uvicorn
-from fastapi import FastAPI, Depends
-from sqlalchemy import select
+from fastapi import FastAPI, Depends, HTTPException, Body
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -12,9 +14,9 @@ from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from api.dependenciest import get_session
-from api.responseSchemas import UserDataResponse, GameBaseResponse, GameResponse
+from api.responseSchemas import UserDataResponse, GameBaseResponse, GameResponse, PlayingGameResponse, \
+    UserDataForGameResponse
 from bot.database.models import UserModel, GameModel
-from bot.enums.game_types import GameType
 
 app = FastAPI()
 
@@ -68,171 +70,264 @@ async def get_games_endpoint(
     return game
 
 
-# class ConnectionManager:
-#     def __init__(self):
-#         self.active_connections: List[WebSocket] = []
-#
-#     async def connect(self, websocket: WebSocket):
-#         await websocket.accept()
-#         self.active_connections.append(websocket)
-#
-#     def disconnect(self, websocket: WebSocket):
-#         self.active_connections.remove(websocket)
-#
-#     async def send_personal_message(self, message: str, websocket: WebSocket):
-#         await websocket.send_text(message)
-#
-#     async def broadcast(self, message: str):
-#         for connection in self.active_connections:
-#             await connection.send_text(message)
-#
-#
-# manager = ConnectionManager()
-#
-#
-# @app.websocket("/ws/{user_id}")
-# async def websocket_endpoint(websocket: WebSocket, user_id: int):
-#     await manager.connect(websocket)
-#     now = datetime.datetime.now()
-#     current_time = now.strftime("%H:%M")
-#     try:
-#         while True:
-#             data = await websocket.receive_text()
-#             # await manager.send_personal_message(f"You wrote: {data}", websocket)
-#             message = {"time": current_time, "userId": user_id, "message": data}
-#             await manager.broadcast(json.dumps(message))
-#
-#     except WebSocketDisconnect:
-#         manager.disconnect(websocket)
-#         message = {"time": current_time, "userId": user_id, "message": "Offline"}
-#         await manager.broadcast(json.dumps(message))
-#
-#
-# # @app.post("/games/{game_id}/create-session")
-# # async def start_game_endpoint(
-# #         game_id: int,
-# #         db_session: Session = Depends(get_session)
-# # ):
-# #     stmt = select(GameModel).where(GameModel.id == game_id).limit(1)
-# #     query = db_session.execute(stmt)
-# #     game = query.scalar()
-# #     if game.game_type == GameType.tick_tack_toe:
-# #         return JSONResponse({"success": "Game Tick-Tac-Toe started"}, status_code=200)
-# #
-# #     return JSONResponse({"error": "Type of game not founded"}, status_code=402)
-#
-#
-# @app.websocket("/ws/room/{user_id}")
-# async def game_room_websocket_endpoint(
-#         websocket: WebSocket,
-#         user_id: int
-# ):
-#     await manager.connect(websocket)
-#     try:
-#         while True:
-#             data = await websocket.receive_text()
-#             # await manager.send_personal_message(f"You wrote: {data}", websocket)
-#             message = {
-#                 "userId": user_id,
-#                 "message": data
-#             }
-#             await manager.broadcast(json.dumps(message))
-#
-#     except WebSocketDisconnect:
-#         manager.disconnect(websocket)
-#         message = {"userId": user_id, "message": "Disconnected"}
-#         await manager.broadcast(json.dumps(message))
+rooms: Dict[str, PlayingGameResponse] = {}
 
-# Словарь для хранения текущих игровых комнат
-rooms: Dict[str, List[WebSocket]] = {}
-
-# Словарь для отслеживания готовности игроков в комнатах
-ready_players: Dict[str, List[str]] = {}
+websocket_lists: Dict[str, List[WebSocket]] = {}
 
 
-@app.websocket("/ws/{room_id}/{player_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: str, player_id: str):
-    # Подключаем игрока к комнате
-    await websocket.accept()
-    await websocket.send_json({"message": "Connected"})
+@app.post(
+    "/games/create-room"
+)
+async def get_games_endpoint(
+        game_id: int = Body(...),
+        bet: int = Body(...),
+        count_players: int = Body(...),
+        db_session: Session = Depends(get_session)
+):
+    def create_room_id(set_game_id: int):
+        return f"{set_game_id}_{secrets.token_hex(5)}"
 
-    # Добавляем игрока в соответствующую комнату
-    if room_id not in rooms:
-        rooms[room_id] = [websocket]
-        ready_players[room_id] = []
-    else:
-        rooms[room_id].append(websocket)
+    stmt = select(GameModel).where(GameModel.id == game_id).limit(1)
+    query = await db_session.execute(stmt)
+    game: GameModel = query.scalar()
+    if not (
+            game and game.is_active and game.max_players
+    ):
+        return JSONResponse({"error": "Game not found or not active"}, status_code=403)
 
-    # Ожидание готовности игрока
-    await websocket.send_json({"message": "Press ready when you are ready to play"})
-    ready = await websocket.receive_text()
-    if ready == "ready":
-        ready_players[room_id].append(player_id)
-        await websocket.send_json({"message": "Waiting for other player to be ready"})
-    else:
-        await websocket.send_json({"message": "You need to press ready to start the game"})
+    if bet == 0:
+        return JSONResponse({"error": "Bet cannot be zero"}, status_code=403)
 
-    # Если в комнате достаточно игроков и они оба готовы, начинаем игру
-    if len(rooms[room_id]) == 2 and len(ready_players[room_id]) == 2:
-        await start_game(room_id)
+    if count_players < 2:
+        return JSONResponse({"error": "Number of players cannot be less than 2"}, status_code=403)
+
+    if count_players > game.max_players:
+        return JSONResponse({"error": f"Number of players cannot be less than {game.max_players}"}, status_code=403)
+
+    room_id = create_room_id(set_game_id=game.id)
+    rooms[room_id] = PlayingGameResponse(
+        title=game.title,
+        game_id=game.id,
+        description=game.description,
+        websocket_uri=game.websocket_uri,
+        bet=bet,
+        count_players=count_players
+    )
+    print("created", rooms[room_id])
+
+    return JSONResponse({"redirect_to_room_uri": f"{game.front_uri}/{room_id}"}, status_code=200)
 
 
-async def start_game(room_id: str):
-    # Логика начала игры, инициализация поля и игрового состояния
-    board = [[' ' for _ in range(4)] for _ in range(4)]
-    current_player = 0  # Индекс текущего игрока в списке комнаты
+def check_valid_room(room_id: str):
+    # print("all", rooms, rooms[room_id].game_id != room_id.split("_")[0])
+    if (room_id not in rooms or rooms[room_id].game_id != int(room_id.split("_")[0]) or
+            rooms[room_id].game_started or rooms[room_id].game_finished):
+        raise HTTPException(status_code=404, detail='not valid room')
 
-    # Отправляем сообщение о начале игры всем игрокам в комнате
-    for player in rooms[room_id]:
-        await player.send_json({"message": "Game started"})
 
-    # Отправляем игрокам начальное состояние игры (пустое поле)
-    for player in rooms[room_id]:
-        await player.send_json({"board": board})
+@app.get(
+    "/games/get_room/{room_id}",
+    dependencies=[Depends(check_valid_room)]
+)
+async def get_room_info_endpoint(
+        room_id: str
+):
+    return rooms[room_id]
 
-    # Ожидаем и обрабатываем ходы игроков до завершения игры
-    while True:
-        winner = check_winner(board)
-        if winner:
-            for player in rooms[room_id]:
-                await player.send_json({"message": f"Game over! Winner is {winner}"})
-            break  # Завершаем игру
-        # Получаем ход от текущего игрока
-        player = rooms[room_id][current_player]
-        move = await player.receive_text()
-        # Обновляем игровое поле с учетом хода
-        row, col = map(int, move.split(','))
-        if board[row][col] == ' ':
-            board[row][col] = 'X' if current_player == 0 else 'O'
-            current_player = 1 - current_player  # Переключаем игрока
-            # Отправляем обновленное состояние игры обоим игрокам
-            for player in rooms[room_id]:
-                await player.send_json({"board": board})
+
+async def send_for_all_in_room(room_id: str, json: dict):
+    for player in websocket_lists[room_id]:
+        await player.send_json(json)
+
+
+async def close_connections_all_in_room(room_id: str):
+    for player in websocket_lists[room_id]:
+        await player.close()
+    websocket_lists[room_id] = []
+
+
+@app.websocket("/connect/ticktacktoe/{room_id}/{user_id}", dependencies=[Depends(check_valid_room)])
+async def connect_to_room_endpoint(
+        room_id: str,
+        user_id: int,
+        websocket: WebSocket,
+        db_session: Session = Depends(get_session)
+):
+    stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
+    query = await db_session.execute(stmt)
+    user: UserModel = query.scalar()
+    if not user:
+        return JSONResponse({"error": "User not found"}, status_code=400)
+
+    try:
+        await websocket.accept()
+        # await websocket.send_json({"message": "Connected"})
+
+        if room_id not in websocket_lists:
+            websocket_lists[room_id] = [websocket]
         else:
-            await player.send_json({"message": "Invalid move"})
+            websocket_lists[room_id].append(websocket)
 
+        if user_id not in rooms[room_id].connected_players:
+            rooms[room_id].connected_players[user_id] = (
+                UserDataForGameResponse(
+                    avatar_url=user.avatar_url,
+                    last_name=user.last_name,
+                    first_name=user.first_name,
+                    username=user.username,
+                )
+            )
+            # await websocket.send_json({"message": "Waits other players"})
+        else:
+            rooms[room_id].connected_players[user_id].append(
+                UserDataForGameResponse(
+                    avatar_url=user.avatar_url,
+                    last_name=user.last_name,
+                    first_name=user.first_name,
+                    username=user.username,
+                )
+            )
 
-def check_winner(board: List[List[str]]) -> str:
-    # Проверяем строки, столбцы и диагонали на наличие победителя
-    for i in range(4):
-        # Проверка строк
-        if board[i][0] == board[i][1] == board[i][2] == board[i][3] != ' ':
-            return board[i][0]
-        # Проверка столбцов
-        if board[0][i] == board[1][i] == board[2][i] == board[3][i] != ' ':
-            return board[0][i]
-    # Проверка главной диагонали
-    if board[0][0] == board[1][1] == board[2][2] == board[3][3] != ' ':
-        return board[0][0]
-    # Проверка побочной диагонали
-    if board[0][3] == board[1][2] == board[2][1] == board[3][0] != ' ':
-        return board[0][3]
-    # Если никто не победил
-    return None
+        await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+        while True:
+            ready = await websocket.receive_text()
+            if ready == "ready":
+                rooms[room_id].connected_players[user_id].is_ready = True
+                # await send_for_all_in_room(room_id, "User is ready")
+                await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+            elif ready == "not_ready":
+                rooms[room_id].connected_players[user_id].is_ready = False
+                # await send_for_all_in_room(room_id, "User is not ready")
+                await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+            if len(rooms[room_id].connected_players) == rooms[room_id].count_players:
+                all_players_ready = True
+                for connected_user in rooms[room_id].connected_players.values():
+                    if not connected_user.is_ready:
+                        all_players_ready = False
+                        break
+                if all_players_ready:
+                    rooms[room_id].game_started = True
+                    # await send_for_all_in_room(room_id, "Game started")
+                    await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+                    break
+
+        rooms[room_id].current_player_id = random.choice(
+            list(rooms[room_id].connected_players.keys())) \
+            if rooms[room_id].current_player_id is None else rooms[room_id].current_player_id
+        rooms[room_id].game_progress = [[{"user_id": None, "checked_at": None} for _ in range(4)] for _ in range(4)]
+        await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+        while True:
+            for i in range(4):
+                if rooms[room_id].game_progress[i][0]["user_id"] == rooms[room_id].game_progress[i][1]["user_id"] == \
+                        rooms[room_id].game_progress[i][2]["user_id"] == \
+                        rooms[room_id].game_progress[i][3]["user_id"] is not None:
+                    rooms[room_id].winner_id = rooms[room_id].game_progress[i][0]["user_id"]
+                    rooms[room_id].game_finished = True
+                    break
+                if rooms[room_id].game_progress[0][i]["user_id"] == rooms[room_id].game_progress[1][i]["user_id"] == \
+                        rooms[room_id].game_progress[2][i]["user_id"] == \
+                        rooms[room_id].game_progress[3][i]["user_id"] is not None:
+                    rooms[room_id].winner_id = rooms[room_id].game_progress[0][i]["user_id"]
+                    rooms[room_id].game_finished = True
+                    break
+                if rooms[room_id].game_progress[0][0]["user_id"] == rooms[room_id].game_progress[1][1]["user_id"] == \
+                        rooms[room_id].game_progress[2][2]["user_id"] == \
+                        rooms[room_id].game_progress[3][3]["user_id"] is not None:
+                    rooms[room_id].winner_id = rooms[room_id].game_progress[0][0]["user_id"]
+                    rooms[room_id].game_finished = True
+                    break
+                if rooms[room_id].game_progress[3][0]["user_id"] == rooms[room_id].game_progress[2][1]["user_id"] == \
+                        rooms[room_id].game_progress[1][2]["user_id"] == \
+                        rooms[room_id].game_progress[0][3]["user_id"] is not None:
+                    rooms[room_id].winner_id = rooms[room_id].game_progress[3][0]["user_id"]
+                    rooms[room_id].game_finished = True
+                    break
+
+            board_full = True
+            for x in range(4):
+                for y in range(4):
+                    if rooms[room_id].game_progress[x][y]["user_id"] is None:
+                        board_full = False
+            if board_full:
+                rooms[room_id].game_finished = True
+                break
+
+            if rooms[room_id].game_finished:
+                break
+
+            move = await websocket.receive_text()
+            if rooms[room_id].current_player_id == user_id:
+                x, y = map(int, move.split(','))
+                if rooms[room_id].game_progress[x][y]["user_id"] is None:
+                    rooms[room_id].game_progress[x][y]["user_id"] = user_id
+                    rooms[room_id].game_progress[x][y]["checked_at"] = datetime.datetime.now().isoformat()
+
+                    rooms[room_id].current_player_id = list(rooms[room_id].connected_players.keys())[0]
+
+                    is_next_player = False
+                    for connected_user_id in rooms[room_id].connected_players.keys():
+                        if is_next_player:
+                            rooms[room_id].current_player_id = connected_user_id
+                            break
+                        if connected_user_id == user_id:
+                            is_next_player = True
+
+                    await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+
+        if rooms[room_id].winner_id == user_id is not None and rooms[room_id].game_finished:
+            stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
+            query = await db_session.execute(stmt)
+            user: UserModel = query.scalar()
+            user.money = user.money + rooms[room_id].bet
+            await db_session.commit()
+
+        if rooms[room_id].winner_id != user_id is not None and rooms[room_id].game_finished:
+            stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
+            query = await db_session.execute(stmt)
+            user: UserModel = query.scalar()
+            user.money = user.money - rooms[room_id].bet
+            await db_session.commit()
+
+        await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+        await close_connections_all_in_room(room_id)
+
+    except WebSocketDisconnect:
+        websocket_lists[room_id].remove(websocket)
+        await send_for_all_in_room(room_id, "Disconnected user")
+
+        if len(rooms[room_id].connected_players) >= 2:
+            stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
+            query = await db_session.execute(stmt)
+            user: UserModel = query.scalar()
+            user.money = user.money - rooms[room_id].bet
+            await db_session.commit()
+
+        if len(rooms[room_id].connected_players) == 2 and rooms[room_id].game_started and not (
+                rooms[room_id].game_finished):
+            del rooms[room_id].connected_players[user_id]
+            rooms[room_id].winner_id = list(rooms[room_id].connected_players.keys())[0]
+            rooms[room_id].game_finished = True
+            await close_connections_all_in_room(room_id)
+
+        elif rooms[room_id].game_started and not (
+                rooms[room_id].game_finished) and rooms[room_id].current_player_id == user_id:
+            rooms[room_id].current_player_id = list(rooms[room_id].connected_players.keys())[0]
+
+            is_next_player = False
+            for connected_user_id in rooms[room_id].connected_players.keys():
+                if is_next_player:
+                    rooms[room_id].current_player_id = connected_user_id
+                    break
+                if connected_user_id == user_id:
+                    is_next_player = True
+
+        del rooms[room_id].connected_players[user_id]
+
+        await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+
+        # await send_for_all_in_room(room_id, "Game ended because user out "
+        #                                     "and last user is win")
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="192.168.5.253", port=443,
-                ssl_keyfile="./localhost+2-key.pem",
-                ssl_certfile="./localhost+2.pem")
-    #на проде можно вручную впечатьать, todo вынести в env
+    uvicorn.run(app, host="127.0.0.1", port=8080)
