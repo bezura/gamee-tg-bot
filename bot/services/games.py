@@ -7,7 +7,7 @@ from bot.database.models.game import GameModel
 
 async def get_inline_games(session: AsyncSession, inline_query: str):
     """Checks if the user is in the database."""
-    query = select(GameModel).order_by(GameModel.id.asc).where(GameModel.title.ilike(f"%{inline_query}%")).limit(10)
+    query = select(GameModel).order_by(GameModel.id).where(GameModel.title.ilike(f"%{inline_query}%")).limit(10)
 
     result = await session.execute(query)
 
@@ -17,7 +17,7 @@ async def get_inline_games(session: AsyncSession, inline_query: str):
 
 
 async def get_game_by_offset(session: AsyncSession, offset: int):
-    query = select(GameModel).offset(offset).order_by(GameModel.id.asc).limit(1)
+    query = select(GameModel).offset(offset).order_by(GameModel.id).limit(1)
     result = await session.execute(query)
     game = result.scalar_one_or_none()
     return game
