@@ -10,7 +10,7 @@ def main_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text=_("games button"), callback_data="games")],
         [InlineKeyboardButton(text=_("profile button"), callback_data="profile")],
-        [InlineKeyboardButton(text="Перейти к играм", web_app=WebAppInfo(url="https://noble-warthog-known.ngrok-free.app"))],
+        [InlineKeyboardButton(text="Перейти к играм", web_app=WebAppInfo(url="https://tg-bot.bezabon.online:3000"))],
         # [InlineKeyboardButton(text=_("money button"), callback_data="money")],
         [InlineKeyboardButton(text=_("support button"), callback_data="support")],
     ]
