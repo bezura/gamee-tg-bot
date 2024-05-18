@@ -280,7 +280,7 @@ async def connect_to_room_endpoint(
             stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
             query = await db_session.execute(stmt)
             user: UserModel = query.scalar()
-            user.money = user.money + rooms[room_id].bet
+            user.money = user.money + rooms[room_id].bet * 0.9
             await db_session.commit()
 
         if rooms[room_id].winner_id != user_id is not None and rooms[room_id].game_finished:
@@ -297,7 +297,8 @@ async def connect_to_room_endpoint(
         websocket_lists[room_id].remove(websocket)
         await send_for_all_in_room(room_id, "Disconnected user")
 
-        if len(rooms[room_id].connected_players) >= 2:
+        if rooms[room_id].game_started and not (
+                rooms[room_id].game_finished):
             stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
             query = await db_session.execute(stmt)
             user: UserModel = query.scalar()
@@ -309,6 +310,11 @@ async def connect_to_room_endpoint(
             del rooms[room_id].connected_players[user_id]
             rooms[room_id].winner_id = list(rooms[room_id].connected_players.keys())[0]
             rooms[room_id].game_finished = True
+            stmt = select(UserModel).where(UserModel.id == rooms[room_id].winner_id).limit(1)
+            query = await db_session.execute(stmt)
+            user: UserModel = query.scalar()
+            user.money = user.money + rooms[room_id].bet * 0.9
+            await db_session.commit()
             await close_connections_all_in_room(room_id)
 
         elif rooms[room_id].game_started and not (
