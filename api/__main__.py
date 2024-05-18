@@ -210,11 +210,13 @@ async def connect_to_room_endpoint(
                     # await send_for_all_in_room(room_id, "Game started")
                     await send_for_all_in_room(room_id, rooms[room_id].model_dump())
                     break
+        if rooms[room_id].current_player_id is None:
+            rooms[room_id].current_player_id = random.choice(
+                list(rooms[room_id].connected_players.keys()))
 
-        rooms[room_id].current_player_id = random.choice(
-            list(rooms[room_id].connected_players.keys())) \
-            if rooms[room_id].current_player_id is None else rooms[room_id].current_player_id
-        rooms[room_id].game_progress = [[{"user_id": None, "checked_at": None} for _ in range(4)] for _ in range(4)]
+        if rooms[room_id].game_progress is None:
+            rooms[room_id].game_progress = [[{"user_id": None, "checked_at": None} for _ in range(4)] for _ in range(4)]
+
         await send_for_all_in_room(room_id, rooms[room_id].model_dump())
         while True:
             for i in range(4):
@@ -331,4 +333,3 @@ async def connect_to_room_endpoint(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8080)
-
