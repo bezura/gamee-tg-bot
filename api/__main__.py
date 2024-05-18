@@ -50,7 +50,7 @@ async def get_user_data_endpoint(
 async def get_games_endpoint(
         db_session: Session = Depends(get_session)
 ):
-    stmt = select(GameModel).where(GameModel.is_active.is_(True)).order_by(GameModel.id.desc())
+    stmt = select(GameModel).order_by(GameModel.id.desc())
     query = await db_session.execute(stmt)
     games = query.scalars()
     return games
