@@ -40,6 +40,6 @@ class PlayingGameResponse(BaseModel):
     connected_players: Dict[int, UserDataForGameResponse] = Field({})
     current_player_id: int | None = Field(None)
     game_started: bool = Field(False)
-    game_progress: Any = Field(False)
+    game_progress: Any = Field(None)
     game_finished: bool = Field(False)
     winner_id: int | None = Field(None)
