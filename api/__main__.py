@@ -146,7 +146,7 @@ async def close_connections_all_in_room(room_id: str):
     websocket_lists[room_id] = []
 
 
-@app.websocket("/connect/ticktacktoe/{room_id}/{user_id}", dependencies=[Depends(check_valid_room)])
+@app.websocket("/ws/connect/ticktacktoe/{room_id}/{user_id}", dependencies=[Depends(check_valid_room)])
 async def connect_to_room_endpoint(
         room_id: str,
         user_id: int,
