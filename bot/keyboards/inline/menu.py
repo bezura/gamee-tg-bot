@@ -22,9 +22,10 @@ def main_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
-def games_keyboard(offset: int = 0) -> InlineKeyboardMarkup:
+def games_keyboard(game_id: int, offset: int = 0) -> InlineKeyboardMarkup:
     """Use in games menu."""
     buttons = [
+        [InlineKeyboardButton(text="Открыть игру!", web_app=WebAppInfo(url=f"https://tg-bot.bezabon.online:3000/{game_id}"))],
         [InlineKeyboardButton(text="<-", callback_data=OffsetOfGameFactory(offset=offset - 1).pack())],
         [InlineKeyboardButton(text="->", callback_data=OffsetOfGameFactory(offset=offset + 1).pack())],
         [InlineKeyboardButton(text="Вернутся в главное меню", callback_data="menu")]
@@ -32,7 +33,7 @@ def games_keyboard(offset: int = 0) -> InlineKeyboardMarkup:
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
 
-    keyboard.adjust(2, 1)
+    keyboard.adjust(1, 2, 1)
 
     return keyboard.as_markup()
 

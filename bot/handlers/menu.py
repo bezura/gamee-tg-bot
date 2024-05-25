@@ -44,7 +44,7 @@ async def callback_menu_handler(callback_query: types.CallbackQuery, state: FSMC
             game = await get_game_by_offset(session=session, offset=offset)
 
     await callback_query.message.edit_text(f"{game.title}\n{game.description}",
-                                           reply_markup=games_keyboard(offset=offset),
+                                           reply_markup=games_keyboard(offset=offset, game_id=game.id),
                                            link_preview_options=LinkPreviewOptions(
                                                is_disabled=False,
                                                url=game.thumbnail_url or "https://docs.python-telegram-bot.org/en/"
@@ -76,7 +76,7 @@ async def profile_handler(callback_query: types.CallbackQuery, session: AsyncSes
 
 @router.callback_query(F.data == "add money")
 async def profile_handler(callback_query: types.CallbackQuery, state: FSMContext) -> None:
-    await callback_query.message.edit_text(text=f"Назовите, ответным сообщением сумму, Господин",
+    await callback_query.message.edit_text(text=f"Назовите, ответным сообщением сумму (в рублях), Господин",
                                            reply_markup=only_go_to_main_keyboard())
     await state.set_state(EarnMoney.chose_counting)
 

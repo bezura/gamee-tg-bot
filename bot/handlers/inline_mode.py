@@ -4,6 +4,7 @@ from aiogram import Router
 from aiogram.types import InlineQuery, InlineQueryResultArticle, InputTextMessageContent, LinkPreviewOptions
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.keyboards.inline.inline_query import inline_query_markup
 from bot.services.games import get_inline_games
 
 router = Router(name="inline_mode")
@@ -43,7 +44,8 @@ async def show_games(inline_query: InlineQuery, session: AsyncSession):
                     prefer_large_media=True
                 ),
                 parse_mode="HTML"
-            )
+            ),
+            reply_markup=inline_query_markup(game_id=game.id),
         )
         )
-    return await inline_query.answer(results, is_personal=True, cache_time=1,)
+    return await inline_query.answer(results, is_personal=True, cache_time=1, )
