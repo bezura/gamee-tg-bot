@@ -22,21 +22,17 @@ def main_keyboard() -> InlineKeyboardMarkup:
     return keyboard.as_markup()
 
 
-def games_keyboard(without_previous: bool = False, without_next: bool = False, offset: int = 0) -> InlineKeyboardMarkup:
+def games_keyboard(offset: int = 0) -> InlineKeyboardMarkup:
     """Use in games menu."""
-    buttons = []
-    if not without_previous:
-        buttons.append([InlineKeyboardButton(text="<-", callback_data=OffsetOfGameFactory(offset=offset-1).pack())])
-    if not without_next:
-            buttons.append([InlineKeyboardButton(text="->", callback_data=OffsetOfGameFactory(offset=offset+1).pack())])
-    buttons.append([InlineKeyboardButton(text="Вернутся в главное меню", callback_data="menu")])
+    buttons = [
+        [InlineKeyboardButton(text="<-", callback_data=OffsetOfGameFactory(offset=offset - 1).pack())],
+        [InlineKeyboardButton(text="->", callback_data=OffsetOfGameFactory(offset=offset + 1).pack())],
+        [InlineKeyboardButton(text="Вернутся в главное меню", callback_data="menu")]
+    ]
 
     keyboard = InlineKeyboardBuilder(markup=buttons)
 
-    if without_previous or without_next:
-        keyboard.adjust(1, 1)
-    else:
-        keyboard.adjust(2, 1)
+    keyboard.adjust(2, 1)
 
     return keyboard.as_markup()
 

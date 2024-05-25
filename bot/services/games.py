@@ -1,4 +1,6 @@
-from sqlalchemy import or_, select
+from typing import Literal
+
+from sqlalchemy import or_, select, asc, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.cache.redis import cached, build_key
@@ -16,8 +18,25 @@ async def get_inline_games(session: AsyncSession, inline_query: str):
     return games
 
 
-async def get_game_by_offset(session: AsyncSession, offset: int):
+async def get_game_by_offset(session: AsyncSession, offset: int, sort: Literal["asc", "desc"] = "asc"):
     query = select(GameModel).offset(offset).order_by(GameModel.id).limit(1)
+    if sort == "asc":
+        query = query.order_by(asc(GameModel.id))
+    else:
+        query = query.order_by(desc(GameModel.id))
+    result = await session.execute(query)
+    game = result.scalar_one_or_none()
+    return game
+
+
+async def get_games_count(session: AsyncSession):
+    query = select(func.count(GameModel.id))
+    result = await session.execute(query)
+    return result.scalar()
+
+
+async def get_game_by_id(session: AsyncSession, game_id: int):
+    query = select(GameModel).where(GameModel.id == game_id).limit(1)
     result = await session.execute(query)
     game = result.scalar_one_or_none()
     return game

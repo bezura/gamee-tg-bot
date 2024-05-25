@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.filters.callbackdata import OffsetOfGameFactory
 from bot.filters.state import EarnMoney
 from bot.keyboards.inline.menu import main_keyboard, profile_keyboard, only_go_to_main_keyboard, games_keyboard
-from bot.services.games import get_game_by_offset
+from bot.services.games import get_game_by_offset, get_games_count
 from bot.services.users import get_user_money, get_user_data, add_money_by_id
 
 router = Router(name="menu")
@@ -33,11 +33,18 @@ async def callback_menu_handler(callback_query: types.CallbackQuery, state: FSMC
                                 callback_data: OffsetOfGameFactory = OffsetOfGameFactory()) -> None:
     await state.clear()
     offset = callback_data.offset
-    game = await get_game_by_offset(session=session, offset=offset)
-    next_game = await get_game_by_offset(session=session, offset=offset + 1)
+    if offset < 0:
+        offset = await get_games_count(session=session) - 1
+        game = await get_game_by_offset(session=session, offset=offset)
+
+    else:
+        game = await get_game_by_offset(session=session, offset=offset)
+        if game is None:
+            offset = 0
+            game = await get_game_by_offset(session=session, offset=offset)
+
     await callback_query.message.edit_text(f"{game.title}\n{game.description}",
-                                           reply_markup=games_keyboard(without_previous=bool(offset == 0),
-                                                                       without_next=bool(not next_game), offset=offset),
+                                           reply_markup=games_keyboard(offset=offset),
                                            link_preview_options=LinkPreviewOptions(
                                                is_disabled=False,
                                                url=game.thumbnail_url or "https://docs.python-telegram-bot.org/en/"
@@ -65,6 +72,7 @@ async def profile_handler(callback_query: types.CallbackQuery, session: AsyncSes
                                            f" * Просмотреть статистику и историю игр📈\n"
                                            f" * Узнать свой текущий баланс💰: <b>{user.money or 0.0:.2f} рублей</b>\n\n",
                                            reply_markup=profile_keyboard())
+
 
 @router.callback_query(F.data == "add money")
 async def profile_handler(callback_query: types.CallbackQuery, state: FSMContext) -> None:
