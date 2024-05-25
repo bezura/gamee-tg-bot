@@ -1,10 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, BinaryIO
 
 from sqlalchemy import func, select, update
 
 from bot.cache.redis import build_key, cached, clear_cache
+from bot.core.config import settings
 from bot.database.models import UserModel
+import python_avatars as pa
 
 if TYPE_CHECKING:
     from aiogram.types import User
@@ -24,6 +26,24 @@ async def add_user(
     language_code: str | None = user.language_code
     is_premium: bool = user.is_premium or False
 
+    photos_profile = (await user.get_profile_photos())
+    avatar_url = None
+    if photos_profile.total_count > 0:
+        file_id: str = photos_profile.photos[0][-1].file_id
+        file = await user.bot.get_file(file_id)
+        file_path = file.file_path
+        await user.bot.download_file(file_path, f"{settings.MEDIA_PATH}/avatar_{user_id}.png")
+        avatar_url = f"/media/avatar_{user_id}.png"
+    else:
+        pa.Avatar.random(
+            style=pa.AvatarStyle.TRANSPARENT,
+            clothing=pa.ClothingType.GRAPHIC_SHIRT,
+            clothing_color=pa.ClothingColor.pick_random,
+            shirt_graphic=pa.ClothingGraphic.CUSTOM_TEXT,
+            shirt_text=first_name
+        ).render(f"{settings.MEDIA_PATH}/avatar_{user_id}.svg")
+        avatar_url = f"/media/avatar_{user_id}.svg"
+
     new_user = UserModel(
         id=user_id,
         first_name=first_name,
@@ -32,6 +52,7 @@ async def add_user(
         language_code=language_code,
         is_premium=is_premium,
         referrer=referrer,
+        avatar_url=avatar_url
     )
 
     session.add(new_user)

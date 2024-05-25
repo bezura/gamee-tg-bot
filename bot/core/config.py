@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 DIR = Path(__file__).absolute().parent.parent.parent
 BOT_DIR = Path(__file__).absolute().parent.parent
+API_DIR = f"{DIR}/api"
 LOCALES_DIR = f"{BOT_DIR}/locales"
 I18N_DOMAIN = "messages"
 
@@ -81,6 +82,8 @@ class Settings(BotSettings, DBSettings, CacheSettings):
     SENTRY_DSN: str | None = None
 
     AMPLITUDE_API_KEY: str  # or for example it could be POSTHOG_API_KEY
+
+    MEDIA_PATH: Path = f"{DIR}/media"
 
 
 settings = Settings()
