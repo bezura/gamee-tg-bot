@@ -8,13 +8,13 @@ if TYPE_CHECKING:
 
 users_commands: dict[str, dict[str, str]] = {
     "en": {
-        "menu": "main menu with earning schemes",
+        "start": "reboot bot",
     },
     "uk": {
-        "menu": "main menu with earning schemes",
+        "start": "reboot bot",
     },
     "ru": {
-        "menu": "main menu with earning schemes",
+        "start": "перезапуск бота",
     },
 }
 
