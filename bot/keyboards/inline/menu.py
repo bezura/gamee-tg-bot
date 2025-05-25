@@ -8,7 +8,7 @@ from bot.filters.callbackdata import OffsetOfGameFactory
 def main_keyboard() -> InlineKeyboardMarkup:
     """Use in main menu."""
     buttons = [
-        [InlineKeyboardButton(text="🕹️ Играть", web_app=WebAppInfo(url="https://tg-bot.bezabon.online/"))],
+        [InlineKeyboardButton(text="🕹️ Играть", web_app=WebAppInfo(url="https://tg-bot.simplifyapp.ru/"))],
         # [InlineKeyboardButton(text=_("money button"), callback_data="money")],
         # [InlineKeyboardButton(text=_("support button"), callback_data="support")],
     ]
