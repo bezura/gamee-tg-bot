@@ -218,32 +218,45 @@ async def connect_to_room_endpoint(
             rooms[room_id].game_progress = [[{"user_id": None, "checked_at": None} for _ in range(4)] for _ in range(4)]
 
         await send_for_all_in_room(room_id, rooms[room_id].model_dump())
+        def check_winner_3_in_a_row(board):
+            n = 4  # размер поля
+            win_len = 3  # длина серии для победы
+        
+            for x in range(n):
+                for y in range(n):
+                    player = board[x][y]["user_id"]
+                    if player is None:
+                        continue
+        
+                    # Проверяем горизонталь вправо
+                    if y + win_len - 1 < n:
+                        if all(board[x][y + offset]["user_id"] == player for offset in range(win_len)):
+                            return player
+        
+                    # Проверяем вертикаль вниз
+                    if x + win_len - 1 < n:
+                        if all(board[x + offset][y]["user_id"] == player for offset in range(win_len)):
+                            return player
+        
+                    # Проверяем диагональ вправо-вниз
+                    if x + win_len - 1 < n and y + win_len - 1 < n:
+                        if all(board[x + offset][y + offset]["user_id"] == player for offset in range(win_len)):
+                            return player
+        
+                    # Проверяем диагональ вправо-вверх
+                    if x - (win_len - 1) >= 0 and y + win_len - 1 < n:
+                        if all(board[x - offset][y + offset]["user_id"] == player for offset in range(win_len)):
+                            return player
+        
+            return None
+
         while True:
-            for i in range(4):
-                if rooms[room_id].game_progress[i][0]["user_id"] == rooms[room_id].game_progress[i][1]["user_id"] == \
-                        rooms[room_id].game_progress[i][2]["user_id"] == \
-                        rooms[room_id].game_progress[i][3]["user_id"] is not None:
-                    rooms[room_id].winner_id = rooms[room_id].game_progress[i][0]["user_id"]
-                    rooms[room_id].game_finished = True
-                    break
-                if rooms[room_id].game_progress[0][i]["user_id"] == rooms[room_id].game_progress[1][i]["user_id"] == \
-                        rooms[room_id].game_progress[2][i]["user_id"] == \
-                        rooms[room_id].game_progress[3][i]["user_id"] is not None:
-                    rooms[room_id].winner_id = rooms[room_id].game_progress[0][i]["user_id"]
-                    rooms[room_id].game_finished = True
-                    break
-                if rooms[room_id].game_progress[0][0]["user_id"] == rooms[room_id].game_progress[1][1]["user_id"] == \
-                        rooms[room_id].game_progress[2][2]["user_id"] == \
-                        rooms[room_id].game_progress[3][3]["user_id"] is not None:
-                    rooms[room_id].winner_id = rooms[room_id].game_progress[0][0]["user_id"]
-                    rooms[room_id].game_finished = True
-                    break
-                if rooms[room_id].game_progress[3][0]["user_id"] == rooms[room_id].game_progress[2][1]["user_id"] == \
-                        rooms[room_id].game_progress[1][2]["user_id"] == \
-                        rooms[room_id].game_progress[0][3]["user_id"] is not None:
-                    rooms[room_id].winner_id = rooms[room_id].game_progress[3][0]["user_id"]
-                    rooms[room_id].game_finished = True
-                    break
+            winner = check_winner_3_in_a_row(rooms[room_id].game_progress)
+            if winner is not None:
+                rooms[room_id].winner_id = winner
+                rooms[room_id].game_finished = True
+                break
+
 
             board_full = True
             for x in range(4):
