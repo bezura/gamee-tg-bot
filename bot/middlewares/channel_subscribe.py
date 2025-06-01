@@ -37,7 +37,7 @@ class ChannelSubscribeMiddleware(BaseMiddleware):
 
         # await message.answer(_("first subscribe to this channel(s)/group(s)"), reply_markup=)
 
-    async def _is_subscribed(self, bot: Bot, user_id: int) -> bool:
+    async def _is_subscribed(self, bot: Bot, user_id: str) -> bool:
         if isinstance(self.chat_ids, list):
             for chat_id in self.chat_ids:
                 try:

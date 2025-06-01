@@ -30,7 +30,7 @@ class UserProperties(BaseModel):
 
 
 class EventProperties(BaseModel):
-    chat_id: int | None = None
+    chat_id: str | None = None
     chat_type: str | None = None
     text: str | None = None
     command: str | None = None
@@ -44,7 +44,7 @@ class Plan(BaseModel):
 
 
 class BaseEvent(BaseModel):
-    user_id: int
+    user_id: str
     event_type: EventType
     time: int | None = None  # int(datetime.now().timestamp() * 1000)
     user_properties: UserProperties | None = None

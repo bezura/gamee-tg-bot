@@ -31,15 +31,15 @@ class UserDataForGameResponse(BaseModel):
 
 
 class PlayingGameResponse(BaseModel):
-    game_id: int
+    game_id: str
     title: str
     description: str
     websocket_uri: str
     bet: int
     count_players: int
     connected_players: Dict[int, UserDataForGameResponse] = Field({})
-    current_player_id: int | None = Field(None)
+    current_player_id: str | None = Field(None)
     game_started: bool = Field(False)
     game_progress: Any = Field(None)
     game_finished: bool = Field(False)
-    winner_id: int | None = Field(None)
+    winner_id: str | None = Field(None)

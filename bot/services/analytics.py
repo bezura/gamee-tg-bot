@@ -16,7 +16,7 @@ class AnalyticsService(metaclass=SingletonMeta):
     def __init__(self, logger: AbstractAnalyticsLogger) -> None:
         self.logger = logger
 
-    async def _track_error(self, user_id: int, error_text: str) -> None:
+    async def _track_error(self, user_id: str, error_text: str) -> None:
         await self.logger.log_event(
             BaseEvent(
                 user_id=user_id,

@@ -35,7 +35,7 @@ async def get_games_count(session: AsyncSession):
     return result.scalar()
 
 
-async def get_game_by_id(session: AsyncSession, game_id: int):
+async def get_game_by_id(session: AsyncSession, game_id: str):
     query = select(GameModel).where(GameModel.id == game_id).limit(1)
     result = await session.execute(query)
     game = result.scalar_one_or_none()

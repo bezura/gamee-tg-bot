@@ -34,7 +34,7 @@ app.add_middleware(
     response_model=UserDataResponse,
 )
 async def get_user_data_endpoint(
-        user_id: int,
+        user_id: str,
         db_session: Session = Depends(get_session)
 ):
     stmt = select(UserModel).where(UserModel.id == user_id).limit(1)
@@ -61,7 +61,7 @@ async def get_games_endpoint(
     response_model=GameResponse,
 )
 async def get_games_endpoint(
-        game_id: int,
+        game_id: str,
         db_session: Session = Depends(get_session)
 ):
     stmt = select(GameModel).where(GameModel.id == game_id).limit(1)
@@ -79,12 +79,12 @@ websocket_lists: Dict[str, List[WebSocket]] = {}
     "/games/create-room"
 )
 async def get_games_endpoint(
-        game_id: int = Body(...),
+        game_id: str = Body(...),
         bet: int = Body(...),
         count_players: int = Body(...),
         db_session: Session = Depends(get_session)
 ):
-    def create_room_id(set_game_id: int):
+    def create_room_id(set_game_id: str):
         return f"{set_game_id}_{secrets.token_hex(5)}"
 
     stmt = select(GameModel).where(GameModel.id == game_id).limit(1)
@@ -149,7 +149,7 @@ async def close_connections_all_in_room(room_id: str):
 @app.websocket("/ws/connect/ticktacktoe/{room_id}/{user_id}", dependencies=[Depends(check_valid_room)])
 async def connect_to_room_endpoint(
         room_id: str,
-        user_id: int,
+        user_id: str,
         websocket: WebSocket,
         db_session: Session = Depends(get_session)
 ):
