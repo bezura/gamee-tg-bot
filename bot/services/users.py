@@ -19,7 +19,7 @@ async def add_user(
         referrer: str | None,
 ) -> None:
     """Add a new user to the database."""
-    user_id: str = str(user.id)
+    user_id: int = user.id
     first_name: str = user.first_name
     last_name: str | None = user.last_name
     username: str | None = user.username
@@ -69,7 +69,8 @@ async def add_money_by_id(session: AsyncSession, user_id: str, new_count_money: 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def user_exists(session: AsyncSession, user_id: str) -> bool:
     """Checks if the user is in the database."""
-    query = select(UserModel.id).filter_by(id=str(user_id)).limit(1)
+    user_id_int = int(user_id)
+    query = select(UserModel.id).filter_by(id=user_id_int).limit(1)
 
     result = await session.execute(query)
 
@@ -79,7 +80,8 @@ async def user_exists(session: AsyncSession, user_id: str) -> bool:
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def get_first_name(session: AsyncSession, user_id: str) -> str:
-    query = select(UserModel.first_name).filter_by(id=user_id)
+    user_id_int = int(user_id)
+    query = select(UserModel.first_name).filter_by(id=user_id_int)
 
     result = await session.execute(query)
 
@@ -89,7 +91,9 @@ async def get_first_name(session: AsyncSession, user_id: str) -> str:
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def get_language_code(session: AsyncSession, user_id: str) -> str:
-    query = select(UserModel.language_code).filter_by(id=user_id)
+    # Convert user_id to integer since that's what the database expects
+    user_id_int = int(user_id)
+    query = select(UserModel.language_code).filter_by(id=user_id_int)
 
     result = await session.execute(query)
 
@@ -98,7 +102,8 @@ async def get_language_code(session: AsyncSession, user_id: str) -> str:
 
 
 async def get_user_money(session: AsyncSession, user_id: str) -> float:
-    query = select(UserModel.money).filter_by(id=user_id)
+    user_id_int = int(user_id)
+    query = select(UserModel.money).filter_by(id=user_id_int)
 
     result = await session.execute(query)
 
@@ -107,7 +112,8 @@ async def get_user_money(session: AsyncSession, user_id: str) -> float:
 
 
 async def get_user_data(session: AsyncSession, user_id: str):
-    query = select(UserModel).filter_by(id=user_id)
+    user_id_int = int(user_id)
+    query = select(UserModel).filter_by(id=user_id_int)
 
     result = await session.execute(query)
 
@@ -120,7 +126,8 @@ async def set_language_code(
         user_id: str,
         language_code: str,
 ) -> None:
-    stmt = update(UserModel).where(UserModel.id == user_id).values(language_code=language_code)
+    user_id_int = int(user_id)
+    stmt = update(UserModel).where(UserModel.id == user_id_int).values(language_code=language_code)
 
     await session.execute(stmt)
     await session.commit()
@@ -128,7 +135,8 @@ async def set_language_code(
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def is_admin(session: AsyncSession, user_id: str) -> bool:
-    query = select(UserModel.is_admin).filter_by(id=user_id)
+    user_id_int = int(user_id)
+    query = select(UserModel.is_admin).filter_by(id=user_id_int)
 
     result = await session.execute(query)
 
@@ -137,7 +145,8 @@ async def is_admin(session: AsyncSession, user_id: str) -> bool:
 
 
 async def set_is_admin(session: AsyncSession, user_id: str, is_admin: bool) -> None:
-    stmt = update(UserModel).where(UserModel.id == user_id).values(is_admin=is_admin)
+    user_id_int = int(user_id)
+    stmt = update(UserModel).where(UserModel.id == user_id_int).values(is_admin=is_admin)
 
     await session.execute(stmt)
     await session.commit()
