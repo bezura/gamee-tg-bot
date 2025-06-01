@@ -60,17 +60,16 @@ async def add_user(
     await clear_cache(user_exists, user_id)
 
 
-async def add_money_by_id(session: AsyncSession, user_id: str, new_count_money: float) -> None:
+async def add_money_by_id(session: AsyncSession, user_id: int, new_count_money: float) -> None:
     query = update(UserModel).where(UserModel.id == user_id).values(money=new_count_money)
     await session.execute(query)
     await session.commit()
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
-async def user_exists(session: AsyncSession, user_id: str) -> bool:
+async def user_exists(session: AsyncSession, user_id: int) -> bool:
     """Checks if the user is in the database."""
-    user_id_int = int(user_id)
-    query = select(UserModel.id).filter_by(id=user_id_int).limit(1)
+    query = select(UserModel.id).filter_by(id=user_id).limit(1)
 
     result = await session.execute(query)
 
@@ -79,9 +78,8 @@ async def user_exists(session: AsyncSession, user_id: str) -> bool:
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
-async def get_first_name(session: AsyncSession, user_id: str) -> str:
-    user_id_int = int(user_id)
-    query = select(UserModel.first_name).filter_by(id=user_id_int)
+async def get_first_name(session: AsyncSession, user_id: int) -> str:
+    query = select(UserModel.first_name).filter_by(id=user_id)
 
     result = await session.execute(query)
 
@@ -90,10 +88,8 @@ async def get_first_name(session: AsyncSession, user_id: str) -> str:
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
-async def get_language_code(session: AsyncSession, user_id: str) -> str:
-    # Convert user_id to integer since that's what the database expects
-    user_id_int = int(user_id)
-    query = select(UserModel.language_code).filter_by(id=user_id_int)
+async def get_language_code(session: AsyncSession, user_id: int) -> str:
+    query = select(UserModel.language_code).filter_by(id=user_id)
 
     result = await session.execute(query)
 
@@ -101,9 +97,8 @@ async def get_language_code(session: AsyncSession, user_id: str) -> str:
     return language_code or ""
 
 
-async def get_user_money(session: AsyncSession, user_id: str) -> float:
-    user_id_int = int(user_id)
-    query = select(UserModel.money).filter_by(id=user_id_int)
+async def get_user_money(session: AsyncSession, user_id: int) -> float:
+    query = select(UserModel.money).filter_by(id=user_id)
 
     result = await session.execute(query)
 
@@ -111,9 +106,8 @@ async def get_user_money(session: AsyncSession, user_id: str) -> float:
     return money or 0.0
 
 
-async def get_user_data(session: AsyncSession, user_id: str):
-    user_id_int = int(user_id)
-    query = select(UserModel).filter_by(id=user_id_int)
+async def get_user_data(session: AsyncSession, user_id: int):
+    query = select(UserModel).filter_by(id=user_id)
 
     result = await session.execute(query)
 
@@ -123,20 +117,18 @@ async def get_user_data(session: AsyncSession, user_id: str):
 
 async def set_language_code(
         session: AsyncSession,
-        user_id: str,
+        user_id: int,
         language_code: str,
 ) -> None:
-    user_id_int = int(user_id)
-    stmt = update(UserModel).where(UserModel.id == user_id_int).values(language_code=language_code)
+    stmt = update(UserModel).where(UserModel.id == user_id).values(language_code=language_code)
 
     await session.execute(stmt)
     await session.commit()
 
 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
-async def is_admin(session: AsyncSession, user_id: str) -> bool:
-    user_id_int = int(user_id)
-    query = select(UserModel.is_admin).filter_by(id=user_id_int)
+async def is_admin(session: AsyncSession, user_id: int) -> bool:
+    query = select(UserModel.is_admin).filter_by(id=user_id)
 
     result = await session.execute(query)
 
@@ -144,9 +136,8 @@ async def is_admin(session: AsyncSession, user_id: str) -> bool:
     return bool(is_admin)
 
 
-async def set_is_admin(session: AsyncSession, user_id: str, is_admin: bool) -> None:
-    user_id_int = int(user_id)
-    stmt = update(UserModel).where(UserModel.id == user_id_int).values(is_admin=is_admin)
+async def set_is_admin(session: AsyncSession, user_id: int, is_admin: bool) -> None:
+    stmt = update(UserModel).where(UserModel.id == user_id).values(is_admin=is_admin)
 
     await session.execute(stmt)
     await session.commit()
