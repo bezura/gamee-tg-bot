@@ -69,7 +69,7 @@ async def add_money_by_id(session: AsyncSession, user_id: str, new_count_money: 
 @cached(key_builder=lambda session, user_id: build_key(user_id))
 async def user_exists(session: AsyncSession, user_id: str) -> bool:
     """Checks if the user is in the database."""
-    query = select(UserModel.id).filter_by(id=user_id).limit(1)
+    query = select(UserModel.id).filter_by(id=str(user_id)).limit(1)
 
     result = await session.execute(query)
 
